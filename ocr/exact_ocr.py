@@ -35,6 +35,10 @@ def fix_braces(text):
             nxt = next((x for x in lines[i + 1:] if x.strip()), "")
             opens = len(nxt) - len(nxt.lstrip()) > ind
             lines[i] = " " * ind + ("{" if opens else "}")
+        elif ln.strip() in ("//i", "//I", "//[", "//1"):
+            lines[i] = ln.replace(ln.strip(), "//{")
+        elif ln.strip() in ("//3);", "//5);", "//1);"):
+            lines[i] = ln.replace(ln.strip(), "//});")
         elif ln.strip().startswith("3);") or ln.strip().startswith("5)"):
             lines[i] = ln.replace("3);", "});", 1).replace("5)", "});", 1)
     return "\n".join(lines)
@@ -99,12 +103,15 @@ def to_layout(words):
         prev_cy = cy
         line, prev_end = "", None
         for w in sorted(row, key=lambda w: w["x"]):
-            col = round((w["x"] - x0) / cw)
-            if col <= len(line):  # collision: join if truly touching, else one space
-                touching = prev_end is not None and (w["x"] - prev_end) < (1.3 if w["t"][0] in ".,;)" else 0.5) * cw
-                col = len(line) + (0 if touching or not line else 1)
+            if not line:  # indent measured from the left edge of the page
+                line = " " * max(0, round((w["x"] - x0) / cw))
+            else:  # gaps measured from the previous word, so errors don't accumulate
+                gap = round((w["x"] - prev_end) / cw)
+                if w["t"][0] in ".,;)" and gap <= 1:
+                    gap = 0
+                line += " " * max(gap, 1 if gap else 0)
             prev_end = w["x"] + w["w"]
-            line += " " * (col - len(line)) + w["t"]
+            line += w["t"]
         out.append(line.rstrip())
     return fix_braces("\n".join(out)) + "\n"
 

@@ -1,16 +1,16 @@
-<!doctype html><meta charset="utf-8"><title>OCR</title><pre style="font-family:'Courier New',Courier,monospace;font-size:14px">// Configure the  PosPay database context  with connection pooling and  SQL Server options
-&amp;  lider.Services.AddDbContextPool&lt;PosPayContext&gt;((serviceProvider,   options) =&gt;
+<!doctype html><meta charset="utf-8"><title>OCR</title><pre style="font-family:'Courier New',Courier,monospace;font-size:14px">// Configure the PosPay database context with connection pooling and SQL Server options
+&amp; lider.Services.AddDbContextPool&lt;PosPayContext&gt;((serviceProvider, options) =&gt;
 {
-    if (builder.Environment .IsDeveLlopment())
+    if (builder.Environment.IsDeveLlopment())
     {
-        options .EnableSensitiveDataLogging();
+        options.EnableSensitiveDataLogging();
     }
 
-    options .UseSqlServer(
-        builder .Configuration.GetConnectionString(&quot;PosPay&quot;),
-        sqlServerOptions  =&gt;
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString(&quot;PosPay&quot;),
+        sqlServerOptions =&gt;
         {
-            sqlServerOptions .CommandTimeout(30);
+            sqlServerOptions.CommandTimeout(30);
         });
 });
 </pre>
