@@ -13,9 +13,31 @@ import sys
 from pathlib import Path
 
 import pytesseract
-from PIL import Image, ImageOps, ImageStat
+from PIL import Image, ImageChops, ImageOps
 
-MIN_HEIGHT = 1500  # upscale small images so Tesseract sees enough pixels
+MIN_HEIGHT = 1800  # upscale small images so Tesseract sees enough pixels
+
+
+def median_level(ch):
+    hist, half, acc = ch.histogram(), ch.width * ch.height / 2, 0
+    for level, n in enumerate(hist):
+        acc += n
+        if acc >= half:
+            return level
+
+
+def fix_braces(text):
+    """Tesseract reads a lone { or } as i/l/[/$/3...; restore them from indentation."""
+    lines = text.split("\n")
+    for i, ln in enumerate(lines):
+        if ln.strip() in ("i", "I", "l", "[", "$", "&", "|", "1", "3", "BI", "IF", "DIF"):
+            ind = len(ln) - len(ln.lstrip())
+            nxt = next((x for x in lines[i + 1:] if x.strip()), "")
+            opens = len(nxt) - len(nxt.lstrip()) > ind
+            lines[i] = " " * ind + ("{" if opens else "}")
+        elif ln.strip().startswith("3);") or ln.strip().startswith("5)"):
+            lines[i] = ln.replace("3);", "});", 1).replace("5)", "});", 1)
+    return "\n".join(lines)
 
 
 def load(path):
@@ -23,9 +45,12 @@ def load(path):
     if img.height < MIN_HEIGHT:
         s = MIN_HEIGHT / img.height
         img = img.resize((round(img.width * s), MIN_HEIGHT), Image.LANCZOS)
-    gray = ImageOps.autocontrast(img.convert("L"))
-    if ImageStat.Stat(gray).mean[0] < 110:  # light-on-dark
-        gray = ImageOps.invert(gray)
+    # ink = distance from the background colour, so coloured syntax-highlighted text
+    # (e.g. dark-blue braces on a dark theme) stays as strong as white text
+    bg = [median_level(ch) for ch in img.split()]
+    diff = [ImageChops.difference(ch, Image.new("L", img.size, b)) for ch, b in zip(img.split(), bg)]
+    ink = ImageChops.lighter(ImageChops.lighter(diff[0], diff[1]), diff[2])
+    gray = ImageOps.invert(ImageOps.autocontrast(ink, cutoff=1))
     return gray
 
 
@@ -72,14 +97,16 @@ def to_layout(words):
         if prev_cy is not None:  # keep vertical gaps as blank lines
             out.extend([""] * max(0, round((cy - prev_cy) / pitch) - 1))
         prev_cy = cy
-        line = ""
+        line, prev_end = "", None
         for w in sorted(row, key=lambda w: w["x"]):
             col = round((w["x"] - x0) / cw)
-            if col <= len(line):  # collision/tight: single space separator
-                col = len(line) + (1 if line else 0)
+            if col <= len(line):  # collision: join if truly touching, else one space
+                touching = prev_end is not None and (w["x"] - prev_end) < (1.3 if w["t"][0] in ".,;)" else 0.5) * cw
+                col = len(line) + (0 if touching or not line else 1)
+            prev_end = w["x"] + w["w"]
             line += " " * (col - len(line)) + w["t"]
         out.append(line.rstrip())
-    return "\n".join(out) + "\n"
+    return fix_braces("\n".join(out)) + "\n"
 
 
 def write_outputs(text, base):

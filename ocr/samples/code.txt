@@ -1,0 +1,15 @@
+// Configure the  PosPay database context  with connection pooling and  SQL Server options
+&  lider.Services.AddDbContextPool<PosPayContext>((serviceProvider,   options) =>
+{
+    if (builder.Environment .IsDeveLlopment())
+    {
+        options .EnableSensitiveDataLogging();
+    }
+
+    options .UseSqlServer(
+        builder .Configuration.GetConnectionString("PosPay"),
+        sqlServerOptions  =>
+        {
+            sqlServerOptions .CommandTimeout(30);
+        });
+});
