@@ -35,6 +35,11 @@ def fix_braces(text):
             nxt = next((x for x in lines[i + 1:] if x.strip()), "")
             opens = len(nxt) - len(nxt.lstrip()) > ind
             lines[i] = " " * ind + ("{" if opens else "}")
+        elif 0 < len(ln.strip()) <= 3 and ln.strip() not in ("{", "}", "});", "};", ");") \
+                and not any(c.isalpha() and c.islower() and len(ln.strip()) > 2 for c in ln) \
+                and i + 1 < len(lines) and lines[i + 1].strip() == "}" \
+                and len(lines[i + 1]) - len(lines[i + 1].lstrip()) < len(ln) - len(ln.lstrip()):
+            lines[i] = ln.replace(ln.strip(), "});")  # garbled closing "});" of an object/lambda
         elif ln.strip() in ("//i", "//I", "//[", "//1"):
             lines[i] = ln.replace(ln.strip(), "//{")
         elif ln.strip() in ("//3);", "//5);", "//1);"):

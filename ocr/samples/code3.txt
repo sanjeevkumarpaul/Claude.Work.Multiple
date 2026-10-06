@@ -1,0 +1,18 @@
+[HttpPost("Login-by-id")]
+O references Gregory Decos, 21 daysago 1 author, 1 change
+public IActionResult LoginById([FromBody] AdminLoginRequest request)
+{
+    var adminUser = adminUsers.FindById(request.UserId);
+    if (adminUser is null)
+    {
+        return Unauthorized(new { detail = "Invalid user ID" });
+    }
+
+
+    var token = tokens.IssueToken(adminUser.Id);
+    return Ok(new
+    {
+        access_token = token,
+        user = ToDto(adminUser),
+    });
+}

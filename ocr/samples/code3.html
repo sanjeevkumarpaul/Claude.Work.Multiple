@@ -1,0 +1,19 @@
+<!doctype html><meta charset="utf-8"><title>OCR</title><pre style="font-family:'Courier New',Courier,monospace;font-size:14px">[HttpPost(&quot;Login-by-id&quot;)]
+O references Gregory Decos, 21 daysago 1 author, 1 change
+public IActionResult LoginById([FromBody] AdminLoginRequest request)
+{
+    var adminUser = adminUsers.FindById(request.UserId);
+    if (adminUser is null)
+    {
+        return Unauthorized(new { detail = &quot;Invalid user ID&quot; });
+    }
+
+
+    var token = tokens.IssueToken(adminUser.Id);
+    return Ok(new
+    {
+        access_token = token,
+        user = ToDto(adminUser),
+    });
+}
+</pre>
